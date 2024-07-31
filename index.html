@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload e Reprodução de Vídeos</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="upload-container">
+        <h2>Upload e Reprodução de Vídeos</h2>
+        <form id="uploadForm" enctype="multipart/form-data">
+            <input type="file" id="videoFile" name="videoFile" accept="video/*" required>
+            <div class="buttons">
+                <button type="submit">Upload</button>
+                <button type="button" id="playButton">Reproduzir</button>
+                <button type="button" id="embedButton">Incorporar</button>
+            </div>
+        </form>
+        <div class="progress-bar">
+            <div class="progress" id="progressBar"></div>
+        </div>
+        <div id="status"></div>
+    </div>
+
+    <video id="videoPlayer" controls width="600"></video>
+
+    <script>
+        let uploadedVideoURL = '';
+
+        document.getElementById('uploadForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById('videoFile');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                alert('Por favor, selecione um arquivo de vídeo.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('videoFile', file);
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', 'https://seu-dominio-heroku.herokuapp.com/upload', true);
+
+            xhr.upload.addEventListener('progress', function(e) {
+                if (e.lengthComputable) {
+                    const percentComplete = (e.loaded / e.total) * 100;
+                    document.getElementById('progressBar').style.width = percentComplete + '%';
+                    document.getElementById('progressBar').textContent = Math.round(percentComplete) + '%';
+                }
+            });
+
+            xhr.addEventListener('load', function() {
+                if (xhr.status === 200) {
+                    const response = JSON.parse(xhr.responseText);
+                    uploadedVideoURL = response.url; // URL do vídeo armazenado no servidor
+                    document.getElementById('status').textContent = 'Upload concluído com sucesso!';
+                    document.getElementById('videoPlayer').src = uploadedVideoURL;
+                } else {
+                    document.getElementById('status').textContent = 'Erro no upload. Tente novamente.';
+                }
+            });
+
+            xhr.addEventListener('error', function() {
+                document.getElementById('status').textContent = 'Erro no upload. Tente novamente.';
+            });
+
+            xhr.send(formData);
+        });
+
+        document.getElementById('playButton').addEventListener('click', function() {
+            const videoPlayer = document.getElementById('videoPlayer');
+            if (uploadedVideoURL) {
+                videoPlayer.style.display = 'block';
+                videoPlayer.play();
+            } else {
+                alert('Nenhum vídeo disponível para reprodução.');
+            }
+        });
+
+        document.getElementById('embedButton').addEventListener('click', function() {
+            if (uploadedVideoURL) {
+                const embedCode = `<iframe src="${uploadedVideoURL}" width="600" height="400" frameborder="0" allowfullscreen></iframe>`;
+                prompt('Copie o código de incorporação:', embedCode);
+            } else {
+                alert('Nenhum vídeo disponível para incorporação.');
+            }
+        });
+    </script>
+</body>
+</html>
